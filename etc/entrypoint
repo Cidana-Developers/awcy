@@ -11,6 +11,8 @@ if [ -n "${1:-}" ]; then
 	exec "$@"
 fi
 
+APP_DIR="${APP_DIR:-/opt/app}"
+
 # create data directories
 for dir in \
 	"${CONFIG_DIR}" \
@@ -29,6 +31,8 @@ net_ip_addr=$(ip addr show dev ${net_iface} | awk -F'[ \t/]+' '/inet / { print $
 export EXTERNAL_ADDR=${EXTERNAL_ADDR:-${net_ip_addr}}
 
 # prepare awcy server configuration if needed
+# [Edmond] remove config.json to create new for every launch with rd_tool reset
+rm -f ${CONFIG_DIR}/config.json
 if [ ! -f "${CONFIG_DIR}/config.json" ]; then
 	cat >${CONFIG_DIR}/config.json <<-EOF
 	{
@@ -59,13 +63,17 @@ if [ ! -f "${CONFIG_DIR}/sets.json" ]; then
 	cp -f ${RD_TOOL_DIR}/sets.json ${CONFIG_DIR}/sets.json
 
 	# create fast set for testing
-	# set_name=acwy-builder-quicktest
+	# set_name=awcy-builder-quicktest
 	# rm -rf ${MEDIAS_SRC_DIR}/${set_name}
 	# mkdir -p ${MEDIAS_SRC_DIR}/${set_name}
 	# wget --output-document ${MEDIAS_SRC_DIR}/${set_name}/test_frame.y4m https://people.xiph.org/~tdaede/sets/subset1-monochrome/Claudette_14_july_2003_1920Z.y4m
 	# jq '. + {"'${set_name}'": {"type": "image", "sources": ["test_frame.y4m"]}}' ${RD_TOOL_DIR}/sets.dist.json >${CONFIG_DIR}/sets.json
 	# chown -R ${APP_USER}:${APP_USER} ${MEDIAS_SRC_DIR}/${set_name}
 	chown ${APP_USER}:${APP_USER} ${CONFIG_DIR}/sets.json
+fi
+
+if [ ! -f "${APP_DIR}/www/sets.json" ]; then
+	cp ${CONFIG_DIR}/sets.json ${APP_DIR}/www/sets.json
 fi
 
 # prepare awcy list file if needed

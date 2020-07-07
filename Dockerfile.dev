@@ -95,27 +95,28 @@ ENV \
 
 # install rust
 RUN \
-	RUST_VERSION=1.30.1 && \
+	RUST_VERSION=1.42.0 && \
 	curl -sSf --output /tmp/rustup-init https://static.rust-lang.org/rustup/archive/1.14.0/x86_64-unknown-linux-gnu/rustup-init && \
 	chmod +x /tmp/rustup-init && \
 	/tmp/rustup-init -y --no-modify-path --default-toolchain ${RUST_VERSION} && \
 	rm -vf /tmp/rustup-init && \
 	chmod -R a+w ${RUSTUP_HOME} ${CARGO_HOME}
 
-# install node 8.x
+# install node 12.x
 RUN \
-	NODE_VERSION=8.12.0 && \
+	NODE_VERSION=12.16.1 && \
 	ARCH=x64 && \
 	for key in \
+		4ED778F539E3634C779C87C6D7062848A1AB005C \
+		B9E2F5981AA6E0CD28160D9FF13993A75599653C \
 		94AE36675C464D64BAFA68DD7434390BDBE9B9C5 \
-		FD3A5288F042B6850C66B31F09FE44734EB7990E \
-		71DCFD284A79C3B38668286BC97EC7A07EDE3FC1 \
-		DD8F2338BAE7501E3DD5AC78C273792F7D83545D \
-		C4F0DFFF4E8C1A8236409D08E73BC641CC11F4C8 \
 		B9AE9905FFD7803F25714661B63B535A4C206CA9 \
-		56730D5401028683275BD23C23EFEFE93C4CFFFE \
 		77984A986EBC2AA786BC0F66B01FBB92821C587A \
+		71DCFD284A79C3B38668286BC97EC7A07EDE3FC1 \
 		8FCCA13FEF1D0C2E91008E09770F7A9A5AE15600 \
+		C4F0DFFF4E8C1A8236409D08E73BC641CC11F4C8 \
+		DD8F2338BAE7501E3DD5AC78C273792F7D83545D \
+		A48C2BEE680E841632CD4E44F07496B3EB3C1762 \
 	; do \
 		for server in $(shuf -e ${GPG_SERVERS}) ; do \
 			http_proxy= gpg --keyserver "$server" --recv-keys "${key}" && break || : ; \
@@ -174,7 +175,7 @@ ENV \
 
 RUN \
 	mkdir -p $(dirname ${DAALATOOL_DIR}) && \
-	git clone https://github.com/xiph/daala.git ${DAALATOOL_DIR} && \
+	git clone https://github.com/edmond-zhu/daala.git ${DAALATOOL_DIR} && \
 	cd ${DAALATOOL_DIR} && \
 	./autogen.sh && \
 	./configure --disable-player && \
@@ -203,7 +204,8 @@ RUN \
 #	curl -sSL https://github.com/tdaede/rd_tool/tarball/master | tar zxf - -C ${RD_TOOL_DIR} --strip-components=1
 
 # copy rd_tool instead of pull from github
-#ADD rd_tool ${RD_TOOL_DIR}
+ADD rd_tool ${RD_TOOL_DIR}
+RUN chmod --recursive a+x ${RD_TOOL_DIR}
 
 # add code
 ADD package.json *.ts tsconfig.json ${APP_DIR}/

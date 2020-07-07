@@ -417,9 +417,8 @@ export class Job {
     return baseUrl + `runs/${this.id}/${this.task}/${name}-daala.out`
   }
 
-  decocerUrl(): string {
-    return 'https://people.xiph.org/~mbebenita/analyzer/inspect.js';
-    if (this.codec == 'rav1e' || this.codec == 'svt-av1') {
+  decoderUrl(): string {
+    if (this.codec == 'rav1e' || this.codec == 'svt-av1' || this.codec == 'av1') {
       return 'https://people.xiph.org/~mbebenita/analyzer/inspect.js';
     } else {
       return baseUrl + `runs/${this.id}/js/decoder.js`;
@@ -437,11 +436,11 @@ export class Job {
   }
 
   analyzerIvfUrl(name: string, quality: number) {
-    return analyzerBaseUrl + `?decoder=${this.decocerUrl()}&file=${this.ivfUrl(name, quality)}`;
+    return analyzerBaseUrl + `?decoder=${this.decoderUrl()}&file=${this.ivfUrl(name, quality)}`;
   }
 
   analyzerReportIvfUrl(name: string, quality: number) {
-    return analyzerReportBaseUrl + `?decoder=${this.decocerUrl()}&file=${this.ivfUrl(name, quality)}`;
+    return analyzerReportBaseUrl + `?decoder=${this.decoderUrl()}&file=${this.ivfUrl(name, quality)}`;
   }
 
   loadReport(): Promise<{ [name: string]: any }> {
@@ -470,7 +469,7 @@ export class Job {
   }
 
   hasAnalyzer(): Promise<boolean> {
-    return fileExists(this.decocerUrl());
+    return fileExists(this.decoderUrl());
   }
 
   hasReport(): Promise<boolean> {
@@ -808,12 +807,14 @@ export class AppStore {
     });
   }
   static bdRateReportCache: { [path: string]: BDRateReport } = {};
-  static loadBDRateReport(a: Job, b: Job, set: string, method = "report-overlap"): Promise<BDRateReport> {
+    static loadBDRateReport(a: Job, b: Job, set: string, method = "report-overlap", range="av1", interpolation="pchip-new"): Promise<BDRateReport> {
     let args = [
       "a=" + encodeURIComponent(a.id),
       "b=" + encodeURIComponent(b.id),
       "set=" + encodeURIComponent(set),
       "method=" + encodeURIComponent(method),
+      "range=" + encodeURIComponent(range),
+      "interpolation=" + encodeURIComponent(interpolation),
       "file=" + "REMOVEME",
       "format=json"
     ];

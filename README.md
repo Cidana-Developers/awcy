@@ -1,3 +1,4 @@
+
 Are We Compressed Yet?
 ====
 This repository contains the arewecompressedyet.com website source code.
@@ -101,6 +102,62 @@ The rd_server.py daemon listens on port 4000 by default.
 
 More documentation on rd_server.py can be found in its README.
 
+Setting up workers
+===
+Workers are Linux machines accessible over ssh. They need to be the same architecture as the AWCY server.
+
+A worker needs a AWCY work root, which has a directory structure as follows:
+```
+dump_ciede2000/
+daalatool/
+slot0/
+vmaf/
+```
+
+The slot* directores are created by AWCY for jobs.
+
+daalatool must be pre-populated by a clone of the daala repo, with tools built (make tools):
+
+```
+git clone https://git.xiph.org/daala.git daalatool
+cd daalatool
+./autogen.sh
+./configure
+make
+make tools
+```
+
+dump_ciede2000 must be populated by a built version of the dump_ciede2000 tool:
+
+```
+git clone https://github.com/KyleSiefring/dump_ciede2000
+cd dump_ciede2000
+cargo build --release
+```
+
+vmaf is a clone of the Netflix VMAF repository, also built.
+
+In addition, a copy of the test media must be accessible to the worker.
+
+The workers should be configured on the main server with a machines.json file, which contains the host, user and port (for ssh). In addition, it contains the number of cores (which controlls the number of slots), plus the work root (containing the above mentioned directores) and the test media path. For example:
+
+```
+[
+  {
+    "host": "localhost",
+    "user": "xiph",
+    "cores": 8,
+    "port": 22,
+    "work_root": "/home/xiph/awcy_temp",
+    "media_path": "/home/xiph/sets/"
+  },
+]
+```
+
+Each worker must have a unique work root - usually local storage on the worker. One worker is intended to be one physical machine or VM. For testing purposes, one machine can act as multiple workers, but the work_root must be independent. The media path is read-only and can be shared, e.g. via NFS.
+
+The machines should be accesible via passwordless SSH authentication. If needed, the SSH_PRIVKEY_FILE environment variable can inform rd_server.py of a custom private key (.pem format) to use for logging into workers.
+
 Run database format
 ===
 The runs/ directory will contain all of the output files generated from a job. There is a info.json file that specifies what options were used by that particular run. Here is an example of an info.json file:
@@ -194,11 +251,11 @@ Resolving people.xiph.org (people.xiph.org)... 140.211.15.28, 2001:470:eb26:54::
 Connecting to people.xiph.org (people.xiph.org)|140.211.15.28|:443... connected.
 HTTP request sent, awaiting response... 200 OK
 Length: 1485050 (1.4M) [application/octet-stream]
-Saving to: ‘/media/acwy-builder-quicktest/test_frame.y4m’
+Saving to: ‘/media/awcy-builder-quicktest/test_frame.y4m’
 
-/media/acwy-builder-quicktest/test_frame.y4m         100%[=====================================================================================================================>]   1.42M  1.14MB/s    in 1.2s
+/media/awcy-builder-quicktest/test_frame.y4m         100%[=====================================================================================================================>]   1.42M  1.14MB/s    in 1.2s
 
-2019-01-16 22:46:13 (1.14 MB/s) - ‘/media/acwy-builder-quicktest/test_frame.y4m’ saved [1485050/1485050]
+2019-01-16 22:46:13 (1.14 MB/s) - ‘/media/awcy-builder-quicktest/test_frame.y4m’ saved [1485050/1485050]
 
 Cloning into '/data/src/av1'...
 remote: Sending approximately 132.14 MiB ...
@@ -271,7 +328,7 @@ Run (with workers)
 
 You first need to start an AWCY server instance using the [all-in-one instructions](#run-all-in-one), but setting `LOCAL_WORKER_ENABLED` to false.
 
-In a second terminal, start one or more worker instances:
+Next, run once instance of the worker container on each worker machine. FOr testing, you can also run multiple workers on your local machine. In a second terminal, start one or more worker instances:
 
 ```sh
 docker run \
@@ -340,7 +397,7 @@ You should now have two (or more) workers accessible.
 Samples
 ----
 
-To make sure that everything is working properly, you can try a run using the `acwy-builder-quicktest` set, which runs in one minute or so.
+To make sure that everything is working properly, you can try a run using the `awcy-builder-quicktest` set, which runs in one minute or so.
 
 Cleanup
 ----

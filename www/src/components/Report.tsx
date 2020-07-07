@@ -1,6 +1,6 @@
 import * as React from "react";
 import { Glyphicon, Checkbox, Panel, Table } from "react-bootstrap";
-import { Col, Row, Button } from "react-bootstrap";
+import { Col, Row, Button, FormGroup, FormControl } from "react-bootstrap";
 import { Option } from "./Widgets";
 import { BDRateReport, Report, AppStore, Jobs, Job, JobStatus, loadXHR, ReportField, reportFieldNames, metricNames, metricNameToReportFieldIndex, analyzerBaseUrl} from "../stores/Stores";
 
@@ -40,7 +40,7 @@ interface VideoReportProps {
   filterQualities?: number [];
 }
 
-let displayedBDRateMetrics = ['PSNR', 'PSNR HVS', 'SSIM', 'CIEDE 2000', 'PSNR Cb', 'PSNR Cr', 'APSNR', 'APSNR Cb', 'APSNR Cr', 'MS SSIM', 'VMAF'];
+let displayedBDRateMetrics = ['PSNR', 'PSNR HVS', 'SSIM', 'CIEDE 2000', 'APSNR', 'MS SSIM', 'VMAF'];
 
 export class VideoReportComponent extends React.Component<VideoReportProps, {
   jobReport: Report;
@@ -180,7 +180,7 @@ export class AnalyzerLinksComponent extends React.Component<{
     }
 
     function makePair(job: Job, video: string, quality: number): string {
-      return `decoder=${job.decocerUrl()}&decoderName=${encodeURIComponent(job.id)}&file=${job.ivfUrl(video, quality)}`;
+      return `decoder=${job.decoderUrl()}&decoderName=${encodeURIComponent(job.id)}&file=${job.ivfUrl(video, quality)}`;
     }
 
     function makeUrl(jobs: Job [], video: string, quality: number): string {
@@ -236,35 +236,48 @@ export class BDRateReportComponent extends React.Component<BDRateReportProps, {
   report: BDRateReport;
   textReport: string;
   reversed: boolean;
+  range: Option;
+  interpolation: Option;
 }> {
   constructor() {
     super();
-    this.state = { report: null, textReport: null, reversed: false } as any;
+    this.state = { report: null, textReport: null, reversed: false, range: "av1", interpolation:"pchip-new"} as any;
   }
   componentWillReceiveProps(nextProps: BDRateReportProps, nextContext: any) {
     if (this.props.a !== nextProps.a || this.props.b !== nextProps.b) {
-      this.loadReport(nextProps);
+      this.loadReport(nextProps, this.state.range.value, this.state.interpolation.value);
     }
   }
-  loadReport(props: BDRateReportProps) {
+  loadReport(props: BDRateReportProps, range: string, interpolation: string) {
     let a = props.a;
     let b = props.b;
     if (!a || !b) {
       return;
     }
     this.setState({report: null, textReport: null} as any);
-    AppStore.loadBDRateReport(a, b, a.task).then((report) => {
+    AppStore.loadBDRateReport(a, b, a.task, "report-overlap", range, interpolation).then((report) => {
       this.setState({report} as any);
     });
   }
   componentWillMount() {
-    this.loadReport(this.props);
+    this.loadReport(this.props, this.state.range.value, this.state.interpolation.value);
   }
   onReverseClick() {
     let report = this.state.report;
     this.setState({reversed: !this.state.reversed} as any);
-    this.loadReport({a: report.b, b: report.a});
+    this.loadReport({a: report.b, b: report.a}, this.state.range.value, this.state.interpolation.value);
   }
+  onChangeRange(range: Option) {
+    let report = this.state.report;
+    this.setState({ range } as any);
+    this.loadReport({a: report.a, b: report.b}, range.value, this.state.interpolation.value);
+  }
+  onChangeInterpolation(interpolation: Option) {
+    let report = this.state.report;
+    this.setState({ interpolation } as any);
+    this.loadReport({a: report.a, b: report.b}, this.state.range.value, interpolation.value);
+  }
+
   onTextReportClick() {
     function padTable(rows: any [][]) {
       let numCols = rows[0].length;
@@ -276,12 +289,12 @@ export class BDRateReportComponent extends React.Component<BDRateReportProps, {
       }
       function padLeft(s, l, c) {
         while (s.length < l)
-            s = c + s;
+          s = c + s;
         return s;
       }
       function padRight(s, l, c) {
         while (s.length < l)
-            s = s + c;
+          s = s + c;
         return s;
       }
       for (let i = 0; i < numCols; i++) {
@@ -342,12 +355,12 @@ export class BDRateReportComponent extends React.Component<BDRateReportProps, {
     if (a && b) {
       if (!report) {
         return <Panel header={"BD Rate Report"}>
-          <span className="glyphicon glyphicon-refresh glyphicon-refresh-animate"></span> Loading report ...
+            <span className="glyphicon glyphicon-refresh glyphicon-refresh-animate"></span> Loading report ...
         </Panel>
       }
     } else {
       return <Panel header={"BD Rate Report"}>
-        Select two jobs.
+          Select two jobs.
       </Panel>
     }
     let headers = [<th key="video" className="tableHeader">Video</th>];
@@ -374,24 +387,36 @@ export class BDRateReportComponent extends React.Component<BDRateReportProps, {
     for (let error of report.error_strings) {
       errors.push(<p className="bg-warning">{error}</p>);
     }
+    let rangeOptions: Option[] = [];
+    rangeOptions.push({ value: "av1", label: "Quantizer range: 20-55" });
+    rangeOptions.push({ value: "fullrange", label: "Quantizer range: All" });
+    let interpolationOptions: Option[] = [];
+    interpolationOptions.push({ value: "pchip-new", label: "New interpolation method" });
+    interpolationOptions.push({ value: "pchip-old", label: "Historic (AV1) interpolation method" });
     let textReport = this.state.textReport ? <pre>{this.state.textReport}</pre> : null;
-    return <Panel header={`BD Rate Report ${report.a.selectedName + " " + report.a.id} â†’ ${report.b.selectedName + " " + report.b.id}`}>
-      <div style={{ paddingBottom: 8, paddingTop: 4 }}>
-        <Button active={this.state.reversed} onClick={this.onReverseClick.bind(this)} >Reverse</Button>{' '}
-        <Button onClick={this.onTextReportClick.bind(this)} >Get Text Report</Button>
-      </div>
-      {errors}
-      {textReport}
-      <Table striped bordered condensed hover style={{width: "100%"}}>
-        <thead>
-          <tr>
-            {headers}
-          </tr>
-        </thead>
-        <tbody>
-          {rows}
-        </tbody>
-      </Table>
-    </Panel>
+      return <Panel header={`BD Rate Report ${report.a.selectedName + " " + report.a.id} â†?${report.b.selectedName + " " + report.b.id}`}>
+        <div style={{ paddingBottom: 8, paddingTop: 4 }}>
+          <Button active={this.state.reversed} onClick={this.onReverseClick.bind(this)} >Reverse</Button>{' '}
+          <Button onClick={this.onTextReportClick.bind(this)} >Get Text Report</Button>
+          <FormGroup>
+            <Select clearable={false} value={this.state.range} onChange={this.onChangeRange.bind(this)} options={rangeOptions} placeholder="Range">
+            </Select>
+            <Select clearable={false} value={this.state.interpolation} onChange={this.onChangeInterpolation.bind(this)} options={interpolationOptions} placeholder="interpolation">
+            </Select>
+          </FormGroup>
+        </div>
+        {errors}
+        {textReport}
+        <Table striped bordered condensed hover style={{width: "100%"}}>
+          <thead>
+            <tr>
+              {headers}
+            </tr>
+          </thead>
+          <tbody>
+            {rows}
+          </tbody>
+        </Table>
+      </Panel>
   }
 }
